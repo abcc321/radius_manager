@@ -1,0 +1,24 @@
+# RADIUS 网络计费管理系统 - Python依赖
+
+# Web框架
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# 数据库
+sqlalchemy==2.0.23
+pymysql==1.1.0
+
+# 数据验证
+pydantic==2.5.2
+pydantic-settings==2.1.0
+
+# 密码加密
+passlib==1.7.4
+bcrypt==4.1.2
+
+# 工具库
+python-multipart==0.0.6
+python-dotenv==1.0.0
+
+# Excel处理
+openpyxl==3.1.2
