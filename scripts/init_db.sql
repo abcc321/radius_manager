@@ -247,6 +247,35 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
 
 -- =====================================================
+-- 13. 故障报告表
+-- =====================================================
+CREATE TABLE IF NOT EXISTS `fault_reports` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+    `user_id` INT NOT NULL COMMENT '用户ID',
+    `username` VARCHAR(100) NOT NULL COMMENT '上网账号',
+    `apartment_id` INT NOT NULL COMMENT '公寓ID',
+    `apartment_name` VARCHAR(100) COMMENT '公寓名称',
+    `room` VARCHAR(50) COMMENT '房间号',
+    `fault_type` VARCHAR(50) NOT NULL COMMENT '故障类型：cannot_connect-不能上网，slow_network-网络卡顿，frequent_disconnect-频繁掉线',
+    `description` TEXT COMMENT '故障描述',
+    `status` VARCHAR(20) DEFAULT 'pending' COMMENT '状态：pending-待处理，processing-处理中，resolved-已解决，closed-已关闭',
+    `reporter_name` VARCHAR(100) COMMENT '报障人姓名',
+    `reporter_phone` VARCHAR(20) COMMENT '报障人电话',
+    `fault_time` DATETIME NOT NULL COMMENT '故障时间',
+    `resolve_time` DATETIME COMMENT '解决时间',
+    `resolve_description` TEXT COMMENT '处理说明',
+    `operator_id` INT COMMENT '处理操作员ID',
+    `operator_name` VARCHAR(50) COMMENT '处理操作员姓名',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_apartment_id` (`apartment_id`),
+    KEY `idx_fault_type` (`fault_type`),
+    KEY `idx_status` (`status`),
+    KEY `idx_fault_time` (`fault_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='故障报告表';
+
+-- =====================================================
 -- 初始化默认数据
 -- =====================================================
 

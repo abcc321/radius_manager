@@ -34,6 +34,7 @@
 | **预警分析** | 开通未在线用户、频繁拨号用户分析 |
 | **账单管理** | 月度账单生成、Excel导出 |
 | **审计日志** | 操作记录追踪、模块/操作类型筛选 |
+| **故障处理** | 用户报障、工单处理、故障统计、工作流程（待处理→处理中→已解决→已关闭） |
 
 ## 快速启动
 
@@ -120,7 +121,8 @@ radius_manager/
 │   │   ├── billing/            # 账单管理
 │   │   ├── radius/             # RADIUS日志
 │   │   ├── warning/            # 预警分析
-│   │   └── audit_log/          # 审计日志
+│   │   ├── audit_log/          # 审计日志
+│   │   └── fault/              # 故障处理
 │   │
 │   ├── common/                  # 公共模块
 │   │   ├── database.py         # 数据库连接
@@ -151,7 +153,8 @@ radius_manager/
 │   │   │   ├── online_user/    # 在线用户
 │   │   │   ├── billing/        # 账单
 │   │   │   ├── radius/         # RADIUS日志
-│   │   │   └── warning/        # 预警
+│   │   │   ├── warning/        # 预警
+│   │   │   └── fault/          # 故障处理
 │   │   │
 │   │   └── views/              # 页面
 │   │       ├── Login.vue

@@ -105,7 +105,7 @@
         </el-table-column>
         <el-table-column prop="activate_date" label="开通日期" width="110" />
         <el-table-column prop="expire_date" label="到期日期" width="110" />
-        <el-table-column label="操作" fixed="right" width="200">
+        <el-table-column label="操作" fixed="right" width="240">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleDetail(row)">
               详情
@@ -118,6 +118,9 @@
             </el-button>
             <el-button link type="danger" size="small" @click="handleDelete(row)">
               删除
+            </el-button>
+            <el-button link type="info" size="small" @click="handleReportFault(row)">
+              报障
             </el-button>
           </template>
         </el-table-column>
@@ -374,6 +377,47 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 报障弹窗 -->
+    <el-dialog
+      v-model="faultDialogVisible"
+      title="提交故障报告"
+      width="500px"
+    >
+      <el-form :model="faultForm" label-width="100px">
+        <el-form-item label="上网账号">
+          <span>{{ faultForm.username }}</span>
+        </el-form-item>
+        <el-form-item label="报障人" prop="reporter_name">
+          <el-input v-model="faultForm.reporter_name" placeholder="请输入报障人姓名" />
+        </el-form-item>
+        <el-form-item label="联系电话" prop="reporter_phone">
+          <el-input v-model="faultForm.reporter_phone" placeholder="请输入联系电话" />
+        </el-form-item>
+        <el-form-item label="故障类型" prop="fault_type">
+          <el-select v-model="faultForm.fault_type" placeholder="请选择故障类型" style="width: 100%">
+            <el-option label="不能上网" value="cannot_connect" />
+            <el-option label="网络卡顿" value="slow_network" />
+            <el-option label="频繁掉线" value="frequent_disconnect" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="故障描述" prop="description">
+          <el-input
+            v-model="faultForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请详细描述故障情况"
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="faultDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleFaultSubmit" :loading="faultSubmitLoading">
+          提交
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -391,7 +435,8 @@ import {
   importNetworkUsers,
   getApartments,
   getAllPlans,
-  getNetworkUserDetail
+  getNetworkUserDetail,
+  createFaultReport
 } from '../api';
 
 const loading = ref(false);
@@ -962,6 +1007,53 @@ const resetFormData = () => {
   formData.activate_date = '';
   formData.expire_date = '';
   formData.months = 1;
+};
+
+// 报障相关
+const faultDialogVisible = ref(false);
+const faultSubmitLoading = ref(false);
+const faultForm = reactive({
+  user_id: null,
+  username: '',
+  reporter_name: '',
+  reporter_phone: '',
+  fault_type: '',
+  description: ''
+});
+
+const handleReportFault = (row) => {
+  faultForm.user_id = row.id;
+  faultForm.username = row.username;
+  faultForm.reporter_name = row.name || '';
+  faultForm.reporter_phone = row.phone || '';
+  faultForm.fault_type = '';
+  faultForm.description = '';
+  faultDialogVisible.value = true;
+};
+
+const handleFaultSubmit = async () => {
+  if (!faultForm.fault_type) {
+    ElMessage.warning('请选择故障类型');
+    return;
+  }
+
+  try {
+    faultSubmitLoading.value = true;
+    await createFaultReport({
+      user_id: faultForm.user_id,
+      fault_type: faultForm.fault_type,
+      description: faultForm.description,
+      reporter_name: faultForm.reporter_name,
+      reporter_phone: faultForm.reporter_phone
+    });
+    ElMessage.success('故障报告已提交');
+    faultDialogVisible.value = false;
+  } catch (error) {
+    console.error('提交故障报告失败:', error);
+    ElMessage.error(error.response?.data?.detail || '提交失败');
+  } finally {
+    faultSubmitLoading.value = false;
+  }
 };
 </script>
 

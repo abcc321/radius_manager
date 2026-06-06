@@ -187,3 +187,24 @@ class AuditLog(BaseModel):
     user_agent = Column(String(255), comment="用户代理")
     status = Column(String(20), default="success", comment="状态：success-成功，failed-失败")
     error_message = Column(Text, comment="错误信息（如有）")
+
+
+class FaultReport(BaseModel):
+    """故障报告表"""
+    __tablename__ = "fault_reports"
+
+    user_id = Column(Integer, nullable=False, comment="用户ID")
+    username = Column(String(100), nullable=False, comment="上网账号")
+    apartment_id = Column(Integer, nullable=False, comment="公寓ID")
+    apartment_name = Column(String(100), comment="公寓名称")
+    room = Column(String(50), comment="房间号")
+    fault_type = Column(String(50), nullable=False, comment="故障类型：cannot_connect-不能上网，slow_network-网络卡顿，frequent_disconnect-频繁掉线")
+    description = Column(Text, comment="故障描述")
+    status = Column(String(20), default="pending", comment="状态：pending-待处理，processing-处理中，resolved-已解决，closed-已关闭")
+    reporter_name = Column(String(100), comment="报障人姓名")
+    reporter_phone = Column(String(20), comment="报障人电话")
+    fault_time = Column(DateTime, nullable=False, comment="故障时间")
+    resolve_time = Column(DateTime, comment="解决时间")
+    resolve_description = Column(Text, comment="处理说明")
+    operator_id = Column(Integer, comment="处理操作员ID")
+    operator_name = Column(String(50), comment="处理操作员姓名")

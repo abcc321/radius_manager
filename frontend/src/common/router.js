@@ -84,6 +84,12 @@ const routes = [
         name: 'AuditLogs',
         component: () => import('../modules/audit_log/List.vue'),
         meta: { requiresAuth: true, title: '操作日志' }
+      },
+      {
+        path: 'fault',
+        name: 'Fault',
+        component: () => import('../modules/fault/List.vue'),
+        meta: { requiresAuth: true, title: '故障处理' }
       }
     ]
   },

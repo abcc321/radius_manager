@@ -5,7 +5,7 @@ from typing import Optional
 class Settings(BaseSettings):
     # 应用配置
     APP_NAME: str = "RADIUS网络计费管理系统"
-    VERSION: str = "1.0.0"
+    VERSION: str = "1.1.0"
     DEBUG: bool = True
 
     # 数据库配置

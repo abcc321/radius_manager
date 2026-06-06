@@ -11,7 +11,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from common import init_db
-from modules import auth_router, operator_router, apartment_router, nas_router, config_router, radius_router, plan_router, network_user_router, online_user_router, billing_router, warning_router, audit_log_router
+from modules import auth_router, operator_router, apartment_router, nas_router, config_router, radius_router, plan_router, network_user_router, online_user_router, billing_router, warning_router, audit_log_router, fault_router
 from startup_check import run_startup_checks
 from websocket_manager import manager
 
@@ -41,6 +41,7 @@ app.include_router(online_user_router, prefix="/api")
 app.include_router(billing_router, prefix="/api")
 app.include_router(warning_router, prefix="/api")
 app.include_router(audit_log_router, prefix="/api")
+app.include_router(fault_router, prefix="/api")
 
 @app.on_event("startup")
 async def startup():

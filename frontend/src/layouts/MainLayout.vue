@@ -51,6 +51,10 @@
           <el-icon><Warning /></el-icon>
           <span>预警分析</span>
         </el-menu-item>
+        <el-menu-item index="/fault">
+          <el-icon><WarnTriangleFilled /></el-icon>
+          <span>故障处理</span>
+        </el-menu-item>
         <el-menu-item v-if="isAdmin" index="/audit-logs">
           <el-icon><Document /></el-icon>
           <span>操作日志</span>
@@ -106,7 +110,8 @@ import {
   Monitor,
   Wallet,
   Warning,
-  Document
+  Document,
+  WarnTriangleFilled
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

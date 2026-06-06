@@ -103,3 +103,11 @@ export function getAllPlans(params) {
     params
   });
 }
+
+export function createFaultReport(data) {
+  return request({
+    url: "/fault/reports",
+    method: "post",
+    data
+  });
+}
