@@ -1,7 +1,7 @@
 <template>
   <div class="home-container">
     <h1>欢迎使用RADIUS网络计费管理系统</h1>
-    <p>版本：1.0.0</p>
+    <p>版本：1.1.0</p>
   </div>
 </template>
 
