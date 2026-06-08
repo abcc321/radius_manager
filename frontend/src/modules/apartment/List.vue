@@ -4,85 +4,86 @@
       <template #header>
         <div class="page-header">
           <span class="page-title">公寓管理</span>
-          <el-button type="primary" @click="handleCreate">
+          <el-button type="primary" @click="handleCreate" size="small">
             <el-icon><Plus /></el-icon>
-            新增公寓
+            <span class="hide-on-mobile">新增公寓</span>
           </el-button>
         </div>
       </template>
 
-      <div class="search-form">
+      <div class="search-form responsive-search-form">
         <el-form :inline="true" :model="searchForm">
-          <el-form-item label="关键词">
+          <el-form-item label="关键词" class="hide-on-mobile">
             <el-input
               v-model="searchForm.keyword"
               placeholder="编号/名称/地址"
               clearable
               @keyup.enter="handleSearch"
+              style="width: 150px"
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="handleSearch">查询</el-button>
-            <el-button @click="handleReset">重置</el-button>
+            <el-button type="primary" @click="handleSearch" size="small">
+              <el-icon><Search /></el-icon>
+              <span>查询</span>
+            </el-button>
+            <el-button @click="handleReset" size="small">
+              <el-icon><Refresh /></el-icon>
+              <span>重置</span>
+            </el-button>
           </el-form-item>
         </el-form>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="code" label="公寓编号" width="120" />
-        <el-table-column prop="name" label="公寓名称" min-width="150" />
-        <el-table-column prop="contact" label="联系人" width="100" />
-        <el-table-column prop="phone" label="联系电话" width="130" />
-        <el-table-column prop="address" label="地址" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag
-              :type="row.status === 'active' ? 'success' : 'danger'"
-              size="small"
-            >
-              {{ row.status === "active" ? "正常" : "禁用" }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
-          <template #default="{ row }">
-            <el-button
-              link
-              type="primary"
-              size="small"
-              @click="handleEdit(row)"
-            >
-              编辑
-            </el-button>
-            <el-button
-              v-if="row.status === 'active'"
-              link
-              type="warning"
-              size="small"
-              @click="handleDisable(row)"
-            >
-              停用
-            </el-button>
-            <el-button
-              v-else-if="row.status === 'inactive'"
-              link
-              type="success"
-              size="small"
-              @click="handleEnable(row)"
-            >
-              启用
-            </el-button>
-            <el-button
-              link
-              type="danger"
-              size="small"
-              @click="handleDelete(row)"
-            >
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-responsive-wrapper">
+        <el-table :data="tableData" v-loading="loading" stripe>
+          <el-table-column prop="code" label="编号" width="100" />
+          <el-table-column prop="name" label="名称" min-width="120" />
+          <el-table-column prop="contact" label="联系人" width="90" class-name="hide-on-mobile" />
+          <el-table-column prop="phone" label="电话" width="110" class-name="hide-on-mobile" />
+          <el-table-column prop="address" label="地址" min-width="150" show-overflow-tooltip class-name="hide-on-tablet" />
+          <el-table-column prop="status" label="状态" width="80">
+            <template #default="{ row }">
+              <el-tag
+                :type="row.status === 'active' ? 'success' : 'danger'"
+                size="small"
+              >
+                {{ row.status === "active" ? "正常" : "禁用" }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                link
+                type="primary"
+                size="small"
+                @click="handleEdit(row)"
+              >
+                编辑
+              </el-button>
+              <el-button
+                v-if="row.status === 'active'"
+                link
+                type="warning"
+                size="small"
+                @click="handleDisable(row)"
+              >
+                停用
+              </el-button>
+              <el-button
+                v-else-if="row.status === 'inactive'"
+                link
+                type="success"
+                size="small"
+                @click="handleEnable(row)"
+              >
+                启用
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <div class="pagination-container">
         <el-pagination
@@ -100,10 +101,11 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="500px"
+      width="95%"
+      class="responsive-dialog"
       @close="handleDialogClose"
     >
-      <el-form ref="formRef" :model="formData" :rules="rules" label-width="80px">
+      <el-form ref="formRef" :model="formData" :rules="rules" label-width="100px" class="responsive-form">
         <el-form-item label="公寓编号" prop="code">
           <el-input
             v-model="formData.code"
@@ -138,11 +140,12 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button @click="dialogVisible = false" size="small">取消</el-button>
         <el-button
           type="primary"
           :loading="submitLoading"
           @click="handleSubmit"
+          size="small"
         >
           确定
         </el-button>
@@ -155,6 +158,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { getApartments, createApartment, updateApartment, deleteApartment, disableApartment, enableApartment } from "./api";
+import { Plus, Search, Refresh } from "@element-plus/icons-vue";
 
 const loading = ref(false);
 const tableData = ref([]);
@@ -344,5 +348,46 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* 手机端样式优化 */
+@media (max-width: 767px) {
+  .page-container {
+    padding: 10px;
+  }
+
+  .search-form {
+    padding: 12px;
+    margin-bottom: 15px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .page-title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .el-button--small {
+    padding: 6px 12px;
+  }
+
+  .el-button .el-icon {
+    margin-right: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .el-button .el-icon {
+    margin-right: 0;
+  }
+
+  .el-button span {
+    display: none;
+  }
 }
 </style>

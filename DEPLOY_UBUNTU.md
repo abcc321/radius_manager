@@ -309,13 +309,25 @@ sudo ufw enable
 
 ## 九、RADIUS 服务端口配置
 
-如果需要 RADIUS 服务（UDP 端口）：
+### 服务器端需要监听的端口
 
 ```bash
-sudo ufw allow 1812/udp  # RADIUS 认证
-sudo ufw allow 1813/udp  # RADIUS 计费
-sudo ufw allow 3799/udp  # CoA 端口
+sudo ufw allow 1812/udp  # RADIUS 认证（NAS向服务器发送）
+sudo ufw allow 1813/udp  # RADIUS 计费（NAS向服务器发送）
 ```
+
+### NAS 设备端需要监听的端口
+
+```bash
+# 以下端口在 NAS 设备上配置，不是服务器防火墙
+# CoA/Disconnect 端口：3799/UDP
+# 用于服务器向NAS发送强制下线指令
+```
+
+> **说明：**
+> - **1812/1813**：RADIUS 标准端口，NAS 设备主动向服务器发送认证和计费请求
+> - **3799**：CoA (Change of Authorization) 端口，由 NAS 设备监听，接收来自服务器的强制下线指令
+> - 强制下线功能用于：当管理员在系统中强制用户下线时，系统通过 3799 端口向 NAS 发送 Disconnect-Request
 
 ## 十、配置日志轮转
 

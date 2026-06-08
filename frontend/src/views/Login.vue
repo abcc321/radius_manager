@@ -97,14 +97,24 @@ const handleLogin = async () => {
   justify-content: center;
   align-items: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
 }
 
 .login-box {
   width: 400px;
+  max-width: 100%;
   padding: 40px;
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 767px) {
+  .login-box {
+    width: 100%;
+    padding: 30px 20px;
+    border-radius: 12px;
+  }
 }
 
 .login-title {
@@ -114,7 +124,30 @@ const handleLogin = async () => {
   font-size: 24px;
 }
 
+@media (max-width: 767px) {
+  .login-title {
+    font-size: 20px;
+    margin-bottom: 24px;
+  }
+}
+
 .login-form {
   width: 100%;
+}
+
+@media (max-width: 767px) {
+  :deep(.el-input__inner) {
+    height: 42px !important;
+    font-size: 15px !important;
+  }
+
+  :deep(.el-form-item) {
+    margin-bottom: 20px;
+  }
+
+  :deep(.el-button--large) {
+    height: 44px;
+    font-size: 15px;
+  }
 }
 </style>

@@ -32,6 +32,7 @@ class Operator(BaseModel):
     username = Column(String(50), unique=True, nullable=False, comment="用户名")
     password_hash = Column(String(255), nullable=False, comment="密码哈希")
     name = Column(String(50), comment="姓名")
+    phone = Column(String(20), comment="手机号")
     role = Column(String(20), default="operator", comment="角色：admin-系统管理员，operator-普通操作员")
     status = Column(String(20), default="active", comment="状态：active-正常，inactive-禁用")
 
@@ -60,6 +61,7 @@ class NasDevice(BaseModel):
     session_timeout = Column(Integer, default=15682168, comment="会话超时时间（秒）")
     acct_interim_interval = Column(Integer, default=60, comment="计费更新间隔（秒）")
     description = Column(Text, comment="设备描述")
+    status = Column(String(20), default="offline", comment="设备状态：online-在线，offline-离线")
     apartment_id = Column(Integer, nullable=True, comment="所属公寓ID")
 
 
@@ -177,14 +179,9 @@ class AuditLog(BaseModel):
     operator_name = Column(String(50), comment="操作员用户名")
     module = Column(String(50), nullable=False, comment="操作模块")
     action = Column(String(20), nullable=False, comment="操作类型：CREATE-创建，UPDATE-更新，DELETE-删除")
-    target_type = Column(String(50), comment="操作对象类型")
     target_id = Column(Integer, comment="操作对象ID")
-    target_name = Column(String(255), comment="操作对象名称")
     description = Column(Text, comment="操作描述")
-    old_data = Column(Text, comment="操作前数据（JSON）")
-    new_data = Column(Text, comment="操作后数据（JSON）")
     ip_address = Column(String(50), comment="IP地址")
-    user_agent = Column(String(255), comment="用户代理")
     status = Column(String(20), default="success", comment="状态：success-成功，failed-失败")
     error_message = Column(Text, comment="错误信息（如有）")
 

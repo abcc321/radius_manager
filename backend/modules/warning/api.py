@@ -63,61 +63,78 @@ async def get_inactive_users(
     这些用户状态是 active，但不在 online_users 表中
     """
 
-    def _query_inactive_users():
+    def _query_inactive_users(p_apartment_id, p_operator_id):
         from sqlalchemy import cast, String
+        from common.database import SessionLocal
 
-        # 处理字符集不一致问题：将两边的 username 和 apartment_id 都转为相同字符集
-        # 关键：必须同时匹配 username 和 apartment_id，因为不同公寓可以有相同的用户名
-        query = db.query(NetworkUser).filter(
-            NetworkUser.status == 'active'
-        ).outerjoin(
-            OnlineUser,
-            and_(
-                cast(OnlineUser.username, String(255)) == cast(NetworkUser.username, String(255)),
-                OnlineUser.apartment_id == NetworkUser.apartment_id,
-                OnlineUser.status == 'active'
+        # 在独立线程中创建新的数据库session
+        thread_db = SessionLocal()
+
+        try:
+            # 获取操作员的公寓列表（需要在当前线程中查询）
+            operator_apartments = None
+            if p_operator_id:
+                operator = thread_db.query(Operator).filter(Operator.id == p_operator_id).first()
+                if operator and operator.role != "admin":
+                    admins = thread_db.query(ApartmentAdmin).filter(
+                        ApartmentAdmin.operator_id == p_operator_id
+                    ).all()
+                    operator_apartments = [admin.apartment_id for admin in admins]
+
+            # 构建查询：查找未在线的用户
+            # 业务逻辑：
+            # 1. 先找 network_users 表中该公寓的开通用户（status='active'）
+            # 2. 再检查 online_users 表中是否有该帐号且 status='active' 的记录
+            # 3. 如果 online_users 中没有 status='active' 的记录，说明该用户未在线，列出来
+            query = thread_db.query(NetworkUser).filter(
+                NetworkUser.status == 'active'  # 只查开通的用户
+            ).outerjoin(
+                OnlineUser,
+                and_(
+                    cast(OnlineUser.username, String(255)) == cast(NetworkUser.username, String(255)),
+                    OnlineUser.apartment_id == NetworkUser.apartment_id,
+                    OnlineUser.status == 'active'  # 只匹配在线用户
+                )
+            ).filter(
+                OnlineUser.id.is_(None)  # 不存在在线记录 = 未在线
             )
-        ).filter(
-            OnlineUser.id.is_(None)
-        )
 
-        if operator_id:
-            if not is_admin_or_operator(db, operator_id):
-                operator_apartments = get_operator_apartments(db, operator_id)
-                if not operator_apartments:
-                    return 0, []
+            # 应用过滤条件
+            if operator_apartments:
                 query = query.filter(NetworkUser.apartment_id.in_(operator_apartments))
+            elif p_apartment_id:
+                query = query.filter(NetworkUser.apartment_id == p_apartment_id)
 
-        if apartment_id:
-            query = query.filter(NetworkUser.apartment_id == apartment_id)
+            total = query.count()
+            offset = (page - 1) * page_size
+            users = query.order_by(NetworkUser.updated_at.desc()).offset(offset).limit(page_size).all()
 
-        total = query.count()
-        offset = (page - 1) * page_size
-        users = query.order_by(NetworkUser.updated_at.desc()).offset(offset).limit(page_size).all()
+            items = []
+            for user in users:
+                apartment = thread_db.query(Apartment).filter(Apartment.id == user.apartment_id).first()
+                apartment_name = apartment.name if apartment else "未知公寓"
 
-        items = []
-        for user in users:
-            apartment_name = get_apartment_name(db, user.apartment_id)
+                items.append({
+                    "id": user.id,
+                    "username": user.username,
+                    "name": user.name or "-",
+                    "phone": user.phone or "-",
+                    "room": user.room or "-",
+                    "apartment_id": user.apartment_id,
+                    "apartment_name": apartment_name,
+                    "plan_id": user.plan_id,
+                    "activate_date": user.activate_date or "-",
+                    "expire_date": user.expire_date or "-",
+                    "status": user.status,
+                    "created_at": user.created_at.strftime("%Y-%m-%d %H:%M:%S") if user.created_at else "-",
+                    "updated_at": user.updated_at.strftime("%Y-%m-%d %H:%M:%S") if user.updated_at else "-"
+                })
 
-            items.append({
-                "id": user.id,
-                "username": user.username,
-                "name": user.name or "-",
-                "phone": user.phone or "-",
-                "room": user.room or "-",
-                "apartment_id": user.apartment_id,
-                "apartment_name": apartment_name,
-                "plan_id": user.plan_id,
-                "activate_date": user.activate_date or "-",
-                "expire_date": user.expire_date or "-",
-                "status": user.status,
-                "created_at": user.created_at.strftime("%Y-%m-%d %H:%M:%S") if user.created_at else "-",
-                "updated_at": user.updated_at.strftime("%Y-%m-%d %H:%M:%S") if user.updated_at else "-"
-            })
+            return total, items
+        finally:
+            thread_db.close()
 
-        return total, items
-
-    total, items = await run_in_thread(_query_inactive_users)
+    total, items = await run_in_thread(_query_inactive_users, apartment_id, operator_id)
 
     return success({
         "total": total,
@@ -322,45 +339,55 @@ async def get_warning_statistics(
 ):
     """获取预警统计信息"""
 
-    def _get_statistics():
+    def _get_statistics(p_apartment_id, p_operator_id, p_threshold, p_days):
         from sqlalchemy import cast, String
+        from common.database import SessionLocal
+        import pymysql
 
         inactive_count = 0
         frequent_dialing_count = 0
 
-        # 关键：必须同时匹配 username 和 apartment_id，因为不同公寓可以有相同的用户名
-        inactive_query = db.query(NetworkUser).filter(
-            NetworkUser.status == 'active'
-        ).outerjoin(
-            OnlineUser,
-            and_(
-                cast(OnlineUser.username, String(255)) == cast(NetworkUser.username, String(255)),
-                OnlineUser.apartment_id == NetworkUser.apartment_id,
-                OnlineUser.status == 'active'
-            )
-        ).filter(
-            OnlineUser.id.is_(None)
-        )
-
-        # 按公寓筛选
-        if apartment_id:
-            inactive_query = inactive_query.filter(NetworkUser.apartment_id == apartment_id)
-        elif operator_id:
-            if not is_admin_or_operator(db, operator_id):
-                operator_apartments = get_operator_apartments(db, operator_id)
-                if not operator_apartments:
-                    return {
-                        "inactive_users": 0,
-                        "frequent_dialing_users": 0
-                    }
-                inactive_query = inactive_query.filter(NetworkUser.apartment_id.in_(operator_apartments))
-
-        inactive_count = inactive_query.count()
+        # 在独立线程中创建新的数据库session
+        thread_db = SessionLocal()
 
         try:
-            from common.database import SessionLocal
-            import pymysql
+            # 获取操作员的公寓列表
+            operator_apartments = None
+            if p_operator_id:
+                operator = thread_db.query(Operator).filter(Operator.id == p_operator_id).first()
+                if operator and operator.role != "admin":
+                    admins = thread_db.query(ApartmentAdmin).filter(
+                        ApartmentAdmin.operator_id == p_operator_id
+                    ).all()
+                    operator_apartments = [admin.apartment_id for admin in admins]
 
+            # 查询未在线用户数
+            # 业务逻辑：
+            # 1. 先找 network_users 表中该公寓的开通用户（status='active'）
+            # 2. 再检查 online_users 表中是否有该帐号且 status='active' 的记录
+            # 3. 如果 online_users 中没有 status='active' 的记录，说明该用户未在线，列出来
+            inactive_query = thread_db.query(NetworkUser).filter(
+                NetworkUser.status == 'active'  # 只查开通的用户
+            ).outerjoin(
+                OnlineUser,
+                and_(
+                    cast(OnlineUser.username, String(255)) == cast(NetworkUser.username, String(255)),
+                    OnlineUser.apartment_id == NetworkUser.apartment_id,
+                    OnlineUser.status == 'active'  # 只匹配在线用户
+                )
+            ).filter(
+                OnlineUser.id.is_(None)  # 不存在在线记录 = 未在线
+            )
+
+            # 应用过滤条件
+            if operator_apartments:
+                inactive_query = inactive_query.filter(NetworkUser.apartment_id.in_(operator_apartments))
+            elif p_apartment_id:
+                inactive_query = inactive_query.filter(NetworkUser.apartment_id == p_apartment_id)
+
+            inactive_count = inactive_query.count()
+
+            # 查询频繁拨号用户数
             db_config = {
                 'host': '192.168.9.210',
                 'port': 3306,
@@ -374,7 +401,7 @@ async def get_warning_statistics(
             cursor = conn.cursor(pymysql.cursors.DictCursor)
 
             try:
-                time_threshold = datetime.now() - timedelta(days=days)
+                time_threshold = datetime.now() - timedelta(days=p_days)
 
                 sql = """
                     SELECT COUNT(DISTINCT username) as total
@@ -385,26 +412,34 @@ async def get_warning_statistics(
 
                 params = [time_threshold]
 
-                if operator_id:
-                    operator = db.query(Operator).filter(Operator.id == operator_id).first()
-                    if operator and operator.role != "admin":
-                        operator_apartments = get_operator_apartments(db, operator_id)
-                        if operator_apartments:
-                            users_query = db.query(NetworkUser.username).filter(
-                                NetworkUser.apartment_id.in_(operator_apartments)
-                            ).all()
-                            user_list = [u[0] for u in users_query]
-                            if user_list:
-                                placeholders = ','.join(['%s'] * len(user_list))
-                                sql += f" AND username IN ({placeholders})"
-                                params.extend(user_list)
-                            else:
-                                frequent_dialing_count = 0
-                                raise Exception("Skip")
+                if operator_apartments:
+                    users_query = thread_db.query(NetworkUser.username).filter(
+                        NetworkUser.apartment_id.in_(operator_apartments)
+                    ).all()
+                    user_list = [u[0] for u in users_query]
+                    if user_list:
+                        placeholders = ','.join(['%s'] * len(user_list))
+                        sql += f" AND username IN ({placeholders})"
+                        params.extend(user_list)
+                    else:
+                        frequent_dialing_count = 0
+                        raise Exception("Skip")
+                elif p_apartment_id:
+                    users_query = thread_db.query(NetworkUser.username).filter(
+                        NetworkUser.apartment_id == p_apartment_id
+                    ).all()
+                    user_list = [u[0] for u in users_query]
+                    if user_list:
+                        placeholders = ','.join(['%s'] * len(user_list))
+                        sql += f" AND username IN ({placeholders})"
+                        params.extend(user_list)
+                    else:
+                        frequent_dialing_count = 0
+                        raise Exception("Skip")
 
                 sql += " GROUP BY username HAVING COUNT(*) >= %s"
 
-                cursor.execute(sql, params + [threshold])
+                cursor.execute(sql, params + [p_threshold])
                 results = cursor.fetchall()
                 frequent_dialing_count = len(results)
 
@@ -412,15 +447,21 @@ async def get_warning_statistics(
                 cursor.close()
                 conn.close()
 
+            return {
+                "inactive_users": inactive_count,
+                "frequent_dialing_users": frequent_dialing_count
+            }
+
         except Exception as e:
             if "Skip" not in str(e):
-                print(f"[WARNING API] Error getting frequent dialing count: {e}")
+                print(f"[WARNING API] Error getting statistics: {e}")
+            return {
+                "inactive_users": inactive_count,
+                "frequent_dialing_users": frequent_dialing_count
+            }
+        finally:
+            thread_db.close()
 
-        return {
-            "inactive_users": inactive_count,
-            "frequent_dialing_users": frequent_dialing_count
-        }
-
-    stats = await run_in_thread(_get_statistics)
+    stats = await run_in_thread(_get_statistics, apartment_id, operator_id, threshold, days)
 
     return success(stats)

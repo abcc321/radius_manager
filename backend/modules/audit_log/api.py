@@ -1,7 +1,7 @@
 """
 审计日志 API
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from pydantic import BaseModel
@@ -110,7 +110,9 @@ async def get_audit_logs(
 
 
 @router.get("/modules")
-async def get_modules(db: Session = Depends(get_db)):
+async def get_modules(
+    db: Session = Depends(get_db)
+):
     """获取所有模块列表"""
     modules = db.query(AuditLog.module).distinct().all()
     return {
@@ -141,30 +143,22 @@ async def get_statistics(
     by_module = db.query(
         AuditLog.module,
         func.count(AuditLog.id).label('count')
-    ).filter(
-        AuditLog.created_at >= start_date
-    ).group_by(AuditLog.module).all()
+    ).filter(AuditLog.created_at >= start_date).group_by(AuditLog.module).all()
 
     # 按操作类型统计
     by_action = db.query(
         AuditLog.action,
         func.count(AuditLog.id).label('count')
-    ).filter(
-        AuditLog.created_at >= start_date
-    ).group_by(AuditLog.action).all()
+    ).filter(AuditLog.created_at >= start_date).group_by(AuditLog.action).all()
 
     # 按状态统计
     by_status = db.query(
         AuditLog.status,
         func.count(AuditLog.id).label('count')
-    ).filter(
-        AuditLog.created_at >= start_date
-    ).group_by(AuditLog.status).all()
+    ).filter(AuditLog.created_at >= start_date).group_by(AuditLog.status).all()
 
     # 总数
-    total = db.query(func.count(AuditLog.id)).filter(
-        AuditLog.created_at >= start_date
-    ).scalar()
+    total = db.query(func.count(AuditLog.id)).filter(AuditLog.created_at >= start_date).scalar()
 
     return {
         "code": 200,

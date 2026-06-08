@@ -10,9 +10,21 @@ const request = axios.create({
 request.interceptors.request.use(
   config => {
     const url = config.url || ''
-    const operator_id = localStorage.getItem('operator_id')
-    const apartment_id = localStorage.getItem('apartment_id')
     const role = localStorage.getItem('role')
+    const operator_id = localStorage.getItem('operator_id')
+    const username = localStorage.getItem('username')
+    const apartment_id = localStorage.getItem('apartment_id')
+
+    // 设置请求头，传递操作员信息
+    if (role) {
+      config.headers['X-Operator-Role'] = role
+    }
+    if (operator_id) {
+      config.headers['X-Operator-Id'] = operator_id
+    }
+    if (username) {
+      config.headers['X-Operator-Username'] = username
+    }
 
     // 根据角色自动过滤数据
     // 非管理员（operator）只能看到自己关联公寓的数据

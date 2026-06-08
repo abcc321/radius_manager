@@ -218,7 +218,7 @@ nssm start radius_backend
 
 ## 九、防火墙配置
 
-### 开放端口
+### 服务器端需要开放的端口
 
 ```cmd
 netsh advfirewall firewall add rule name="RADIUS Backend" dir=in action=allow protocol=tcp localport=8000
@@ -226,6 +226,19 @@ netsh advfirewall firewall add rule name="RADIUS Frontend" dir=in action=allow p
 netsh advfirewall firewall add rule name="RADIUS Auth" dir=in action=allow protocol=udp localport=1812
 netsh advfirewall firewall add rule name="RADIUS Acct" dir=in action=allow protocol=udp localport=1813
 ```
+
+### NAS 设备端需要配置的端口
+
+```cmd
+# 以下端口在 NAS 设备上配置，不是服务器防火墙
+# CoA/Disconnect 端口：3799/UDP
+# 用于服务器向NAS发送强制下线指令
+```
+
+> **说明：**
+> - **1812/1813**：RADIUS 标准端口，NAS 设备主动向服务器发送认证和计费请求
+> - **3799**：CoA (Change of Authorization) 端口，由 NAS 设备监听，接收来自服务器的强制下线指令
+> - 强制下线功能用于：当管理员在系统中强制用户下线时，系统通过 3799 端口向 NAS 发送 Disconnect-Request
 
 ## 十、验证部署
 

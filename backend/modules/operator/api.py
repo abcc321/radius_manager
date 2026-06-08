@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from pydantic import BaseModel
 from typing import Optional
-from common import get_db, Operator, ApartmentAdmin, hash_password, verify_password, model_to_dict, models_to_list
+from common import get_db, Operator, ApartmentAdmin, hash_password, verify_password, model_to_dict, models_to_list, get_current_operator_with_db, OperatorInfo
 
 router = APIRouter(prefix="/operators", tags=["操作员管理"])
 
@@ -12,12 +12,14 @@ class OperatorCreate(BaseModel):
     username: str
     password: str
     name: str
+    phone: Optional[str] = None
     role: str = "operator"
     apartment_ids: list[int] = []
 
 
 class OperatorUpdate(BaseModel):
     name: Optional[str] = None
+    phone: Optional[str] = None
     role: Optional[str] = None
     status: Optional[str] = None
 
@@ -78,6 +80,34 @@ async def get_operators(
     }
 
 
+@router.get("/me")
+async def get_current_operator_info(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    获取当前登录的操作员信息
+    用于前端自动填充报障人等信息
+    """
+    operator_info = await get_current_operator_with_db(request, db)
+
+    if operator_info.operator_id == 0:
+        raise HTTPException(status_code=401, detail="未登录")
+
+    # 获取完整的操作员信息
+    operator = db.query(Operator).filter(Operator.id == operator_info.operator_id).first()
+    if not operator:
+        raise HTTPException(status_code=404, detail="操作员不存在")
+
+    op_dict = model_to_dict(operator, exclude=["password_hash"])
+    apartments = db.query(ApartmentAdmin).filter(
+        ApartmentAdmin.operator_id == operator.id
+    ).all()
+    op_dict["apartment_ids"] = [a.apartment_id for a in apartments]
+
+    return {"code": 200, "data": op_dict}
+
+
 @router.get("/{operator_id}")
 async def get_operator(operator_id: int, db: Session = Depends(get_db)):
     """获取操作员详情"""
@@ -107,6 +137,7 @@ async def create_operator(operator_data: OperatorCreate, db: Session = Depends(g
         username=operator_data.username,
         password_hash=hash_password(operator_data.password),
         name=operator_data.name,
+        phone=operator_data.phone,
         role=operator_data.role,
         status="active"
     )
@@ -143,6 +174,8 @@ async def update_operator(
 
     if operator_data.name is not None:
         operator.name = operator_data.name
+    if operator_data.phone is not None:
+        operator.phone = operator_data.phone
     if operator_data.role is not None:
         operator.role = operator_data.role
     if operator_data.status is not None:

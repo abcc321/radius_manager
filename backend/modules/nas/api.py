@@ -4,7 +4,7 @@ from sqlalchemy import or_
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from common import get_db, NasDevice, NasStatus, model_to_dict
+from common import get_db, NasDevice, model_to_dict
 
 router = APIRouter(prefix="/nas", tags=["NAS设备管理"])
 
@@ -65,20 +65,8 @@ async def get_nas_devices(
         query = query.filter(NasDevice.apartment_id == apartment_id)
 
     if status:
-        from sqlalchemy import func
-        latest_status_ids = db.query(
-            func.max(NasStatus.id).label('id')
-        ).group_by(NasStatus.nas_device_id).subquery()
-
-        status_subquery = db.query(NasStatus).filter(
-            NasStatus.id == latest_status_ids.c.id,
-            NasStatus.status == status
-        ).subquery()
-
-        query = query.join(
-            status_subquery,
-            NasDevice.id == status_subquery.c.nas_device_id
-        )
+        # 直接使用设备的 status 字段筛选
+        query = query.filter(NasDevice.status == status)
 
     total = query.count()
     devices = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -87,20 +75,11 @@ async def get_nas_devices(
     for device in devices:
         device_dict = model_to_dict(device)
 
-        last_status = db.query(NasStatus).filter(
-            NasStatus.nas_device_id == device.id
-        ).order_by(NasStatus.created_at.desc()).first()
-
-        if last_status:
-            device_dict["status"] = last_status.status
-            device_dict["last_check"] = last_status.created_at.isoformat()
-            device_dict["response_time"] = last_status.response_time
-            device_dict["last_error"] = last_status.error_message
-        else:
-            device_dict["status"] = "unknown"
-            device_dict["last_check"] = None
-            device_dict["response_time"] = None
-            device_dict["last_error"] = None
+        # 状态信息已从设备本身的 status 字段读取，无需额外查询
+        # 保留字段以兼容前端
+        device_dict["last_check"] = None
+        device_dict["response_time"] = None
+        device_dict["last_error"] = None
 
         if device.apartment_id:
             apartment = db.query(Apartment).filter(Apartment.id == device.apartment_id).first()
@@ -135,20 +114,12 @@ async def get_nas_device(device_id: int, db: Session = Depends(get_db)):
 
     device_dict = model_to_dict(device)
 
-    last_status = db.query(NasStatus).filter(
-        NasStatus.nas_device_id == device_id
-    ).order_by(NasStatus.created_at.desc()).first()
-
-    if last_status:
-        device_dict["status"] = last_status.status
-        device_dict["last_check"] = last_status.created_at.isoformat()
-        device_dict["response_time"] = last_status.response_time
-        device_dict["last_error"] = last_status.error_message
-    else:
-        device_dict["status"] = "unknown"
-        device_dict["last_check"] = None
-        device_dict["response_time"] = None
-        device_dict["last_error"] = None
+    # 状态信息不再从数据库读取（已禁用自动记录）
+    device_dict["status"] = "unknown"
+    device_dict["last_check"] = None
+    device_dict["response_time"] = None
+    device_dict["last_error"] = None
+    device_dict["status_history"] = []
 
     if device.apartment_id:
         apartment = db.query(Apartment).filter(Apartment.id == device.apartment_id).first()
@@ -161,11 +132,6 @@ async def get_nas_device(device_id: int, db: Session = Depends(get_db)):
     else:
         device_dict["apartment_name"] = None
         device_dict["apartment_code"] = None
-
-    status_history = db.query(NasStatus).filter(
-        NasStatus.nas_device_id == device_id
-    ).order_by(NasStatus.created_at.desc()).limit(10).all()
-    device_dict["status_history"] = [model_to_dict(s) for s in status_history]
 
     return {"code": 200, "data": device_dict}
 
@@ -325,18 +291,12 @@ async def test_nas_device(device_id: int, db: Session = Depends(get_db)):
         response_time = None
         error_message = str(e)
 
-    status_record = NasStatus(
-        nas_device_id=device_id,
-        status=status,
-        response_time=response_time,
-        error_message=error_message
-    )
-    db.add(status_record)
+    # 更新设备状态
+    device.status = status
     db.commit()
 
     return {
         "code": 200,
-        "message": "测试完成",
         "data": {
             "device_id": device_id,
             "ip_address": device.ip_address,
@@ -344,22 +304,4 @@ async def test_nas_device(device_id: int, db: Session = Depends(get_db)):
             "response_time": response_time,
             "error_message": error_message
         }
-    }
-
-
-@router.get("/{device_id}/status")
-async def get_nas_device_status(device_id: int, db: Session = Depends(get_db)):
-    """获取NAS设备状态历史"""
-    device = db.query(NasDevice).filter(NasDevice.id == device_id).first()
-    if not device:
-        raise HTTPException(status_code=404, detail="NAS设备不存在")
-
-    status_records = db.query(NasStatus).filter(
-        NasStatus.nas_device_id == device_id
-    ).order_by(NasStatus.created_at.desc()).limit(100).all()
-
-    return {
-        "code": 200,
-        "data": [model_to_dict(s) for s in status_records],
-        "total": len(status_records)
     }

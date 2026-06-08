@@ -44,19 +44,19 @@
         </div>
       </template>
 
-      <el-form :inline="true" class="search-form">
-        <el-form-item label="用户名">
+      <el-form :inline="true" class="search-form responsive-search-form">
+        <el-form-item label="用户名" class="hide-on-mobile">
           <el-input
             v-model="searchForm.username"
-            placeholder="搜索用户名"
+            placeholder="搜索"
             clearable
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="公寓">
+        <el-form-item label="公寓" class="hide-on-mobile">
           <el-select
             v-model="searchForm.apartment_id"
-            placeholder="选择公寓"
+            placeholder="公寓"
             clearable
             @change="handleSearch"
           >
@@ -80,24 +80,25 @@
         </el-form-item>
       </el-form>
 
-      <el-table
-        :data="tableData"
-        v-loading="loading"
-        stripe
-        border
-        style="width: 100%"
-      >
-        <el-table-column prop="username" label="用户名" width="120" fixed />
-        <el-table-column prop="apartment_name" label="公寓" width="150" />
-        <el-table-column prop="room" label="房间号" width="100" />
-        <el-table-column prop="nas_name" label="NAS设备" width="150" />
-        <el-table-column prop="framed_ip" label="分配IP" width="130" />
-        <el-table-column prop="calling_station_id" label="MAC地址" width="150" />
-        <el-table-column prop="start_time" label="上线时间" width="160" />
-        <el-table-column prop="online_duration" label="在线时长" width="120" />
-        <el-table-column prop="session_time_formatted" label="会话时长" width="120">
-          <template #default="{ row }">
-            {{ row.session_time_formatted || '-' }}
+      <div class="table-responsive-wrapper">
+        <el-table
+          :data="tableData"
+          v-loading="loading"
+          stripe
+          border
+          style="width: 100%"
+        >
+          <el-table-column prop="username" label="用户" width="100" fixed />
+          <el-table-column prop="apartment_name" label="公寓" width="120" class-name="hide-on-mobile" />
+          <el-table-column prop="room" label="房间" width="80" class-name="hide-on-tablet" />
+          <el-table-column prop="nas_name" label="NAS" width="120" class-name="hide-on-mobile" />
+          <el-table-column prop="framed_ip" label="IP" width="120" class-name="hide-on-tablet" />
+          <el-table-column prop="calling_station_id" label="MAC" width="130" class-name="hide-on-tablet" />
+          <el-table-column prop="start_time" label="上线时间" width="140" class-name="hide-on-mobile" />
+          <el-table-column prop="online_duration" label="时长" width="100" class-name="hide-on-tablet" />
+          <el-table-column prop="session_time_formatted" label="会话" width="100">
+            <template #default="{ row }">
+              {{ row.session_time_formatted || '-' }}
           </template>
         </el-table-column>
         <el-table-column label="流量" width="200">
@@ -133,6 +134,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
       <div class="pagination">
         <el-pagination
@@ -150,7 +152,8 @@
     <el-dialog
       v-model="detailDialogVisible"
       title="用户详情"
-      width="700px"
+      width="95%"
+      class="responsive-dialog"
     >
       <div v-if="currentUser" class="user-detail">
         <el-descriptions :column="2" border>
@@ -390,6 +393,12 @@ onUnmounted(() => {
   padding: 20px;
 }
 
+@media (max-width: 767px) {
+  .online-users-container {
+    padding: 10px;
+  }
+}
+
 .statistics-card {
   margin-bottom: 20px;
 }
@@ -406,9 +415,24 @@ onUnmounted(() => {
   padding: 10px 20px;
 }
 
+@media (max-width: 767px) {
+  .stat-item {
+    padding: 8px 10px;
+    flex: 1 1 40%;
+    justify-content: center;
+  }
+}
+
 .stat-icon {
   font-size: 40px;
   margin-right: 15px;
+}
+
+@media (max-width: 767px) {
+  .stat-icon {
+    font-size: 28px;
+    margin-right: 10px;
+  }
 }
 
 .stat-info {
@@ -422,9 +446,21 @@ onUnmounted(() => {
   color: #303133;
 }
 
+@media (max-width: 767px) {
+  .stat-value {
+    font-size: 18px;
+  }
+}
+
 .stat-label {
   font-size: 14px;
   color: #909399;
+}
+
+@media (max-width: 767px) {
+  .stat-label {
+    font-size: 12px;
+  }
 }
 
 .table-card {
@@ -437,6 +473,14 @@ onUnmounted(() => {
   align-items: center;
 }
 
+@media (max-width: 767px) {
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
 .search-form {
   margin-bottom: 20px;
 }
@@ -445,6 +489,12 @@ onUnmounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+@media (max-width: 767px) {
+  .pagination {
+    margin-top: 15px;
+  }
 }
 
 .traffic-info {
@@ -464,5 +514,31 @@ onUnmounted(() => {
 
 .user-detail {
   padding: 10px;
+}
+
+/* 移动端表格优化 */
+@media (max-width: 767px) {
+  :deep(.el-table) {
+    font-size: 12px;
+  }
+
+  :deep(.el-table__header) {
+    font-size: 12px;
+  }
+
+  :deep(.el-tag) {
+    font-size: 11px;
+    padding: 0 4px;
+  }
+
+  :deep(.el-button--small) {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  :deep(.el-pagination) {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 }
 </style>

@@ -7,6 +7,7 @@ from common.utils import (
     format_datetime, format_date, parse_datetime,
     paginate_query, model_to_dict, models_to_list
 )
+from common.auth import get_current_operator, get_current_operator_with_db, set_request_operator, OperatorInfo
 
 __all__ = [
     "Base", "get_db", "init_db", "engine", "SessionLocal",
@@ -17,5 +18,6 @@ __all__ = [
     "success", "success_with_page", "error", "not_found", "unauthorized", "forbidden", "server_error",
     "hash_password", "verify_password",
     "format_datetime", "format_date", "parse_datetime",
-    "paginate_query", "model_to_dict", "models_to_list"
+    "paginate_query", "model_to_dict", "models_to_list",
+    "get_current_operator", "get_current_operator_with_db", "set_request_operator", "OperatorInfo"
 ]

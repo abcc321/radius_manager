@@ -111,3 +111,10 @@ export function createFaultReport(data) {
     data
   });
 }
+
+export function getCurrentOperator() {
+  return request({
+    url: "/operators/me",
+    method: "get"
+  });
+}

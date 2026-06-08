@@ -64,10 +64,6 @@ export function testNasDevice(id) {
   return request.post(`/nas/${id}/test`)
 }
 
-export function getNasDeviceStatus(id) {
-  return request.get(`/nas/${id}/status`)
-}
-
 export function getNasOnlineUsers(id) {
   return request.get(`/nas/${id}/online-users`)
 }

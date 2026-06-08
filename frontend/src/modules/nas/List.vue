@@ -4,22 +4,22 @@
       <template #header>
         <div class="page-header">
           <span class="page-title">NAS设备管理</span>
-          <el-button type="primary" @click="handleCreate">
+          <el-button type="primary" @click="handleCreate" size="small">
             <el-icon><Plus /></el-icon>
-            新增设备
+            <span class="hide-on-mobile">新增设备</span>
           </el-button>
         </div>
       </template>
 
-      <div class="search-form">
+      <div class="search-form responsive-search-form">
         <el-form :inline="true" :model="searchForm">
-          <el-form-item label="所属公寓">
+          <el-form-item label="公寓" class="hide-on-mobile">
             <el-select
               v-model="searchForm.apartment_id"
-              placeholder="选择公寓"
+              placeholder="公寓"
               clearable
               filterable
-              style="width: 200px;"
+              style="width: 150px;"
             >
               <el-option
                 v-for="apt in apartments"
@@ -29,85 +29,75 @@
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="关键词">
+          <el-form-item label="关键词" class="hide-on-mobile">
             <el-input
               v-model="searchForm.keyword"
-              placeholder="名称/IP地址/类型"
+              placeholder="名称/IP/类型"
               clearable
               @keyup.enter="handleSearch"
+              style="width: 150px"
             />
           </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="searchForm.status" placeholder="选择状态" clearable>
+          <el-form-item label="状态" class="hide-on-mobile">
+            <el-select v-model="searchForm.status" placeholder="状态" clearable style="width: 120px">
               <el-option label="在线" value="online" />
               <el-option label="离线" value="offline" />
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="handleSearch">
+            <el-button type="primary" @click="handleSearch" size="small">
               <el-icon><Search /></el-icon>
-              查询
+              <span>查询</span>
             </el-button>
-            <el-button @click="handleReset">
+            <el-button @click="handleReset" size="small">
               <el-icon><Refresh /></el-icon>
-              重置
+              <span>重置</span>
             </el-button>
           </el-form-item>
         </el-form>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="name" label="设备名称" min-width="150" />
-        <el-table-column prop="ip_address" label="IP地址" width="140" />
-        <el-table-column prop="apartment_name" label="所属公寓" width="150">
-          <template #default="{ row }">
-            <el-tag v-if="row.apartment_name" size="small" type="info">
-              {{ row.apartment_name }}
-            </el-tag>
-            <span v-else style="color: #999;">未分配</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="nas_identifier" label="标识" width="180">
-          <template #default="{ row }">
-            <span v-if="row.nas_identifier" style="color: #409eff;">
-              {{ row.nas_identifier }}
-            </span>
-            <span v-else style="color: #999;">未设置</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="secret" label="密钥" width="150">
-          <template #default="{ row }">
-            <span style="color: #67c23a;">{{ row.secret || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="device_type" label="设备类型" width="120" />
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'online' ? 'success' : row.status === 'offline' ? 'danger' : 'info'" size="small">
-              {{ row.status === 'online' ? '在线' : row.status === 'offline' ? '离线' : '未知' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="最后检测" width="180">
-          <template #default="{ row }">
-            {{ row.last_check ? formatDateTime(row.last_check) : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="240" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="handleDetail(row)">详情</el-button>
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="success" @click="handleTest(row)">测试</el-button>
-            <el-button
-              link
-              type="danger"
-              @click="handleDelete(row)"
-            >
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-responsive-wrapper">
+        <el-table :data="tableData" v-loading="loading" stripe>
+          <el-table-column prop="name" label="设备名称" min-width="120" />
+          <el-table-column prop="ip_address" label="IP地址" width="130" />
+          <el-table-column prop="apartment_name" label="公寓" width="120" class-name="hide-on-mobile">
+            <template #default="{ row }">
+              <el-tag v-if="row.apartment_name" size="small" type="info">
+                {{ row.apartment_name }}
+              </el-tag>
+              <span v-else style="color: #999;">未分配</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="nas_identifier" label="标识" width="150" class-name="hide-on-tablet">
+            <template #default="{ row }">
+              <span v-if="row.nas_identifier" style="color: #409eff;">
+                {{ row.nas_identifier }}
+              </span>
+              <span v-else style="color: #999;">未设置</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="secret" label="密钥" width="120" class-name="hide-on-mobile">
+            <template #default="{ row }">
+              <span style="color: #67c23a;">{{ row.secret || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="device_type" label="类型" width="100" class-name="hide-on-tablet" />
+          <el-table-column label="状态" width="80">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'online' ? 'success' : row.status === 'offline' ? 'danger' : 'info'" size="small">
+                {{ row.status === 'online' ? '在线' : row.status === 'offline' ? '离线' : '未知' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click="handleDetail(row)">详情</el-button>
+              <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <div class="pagination-container">
         <el-pagination
@@ -125,7 +115,8 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="600px"
+      width="95%"
+      class="responsive-dialog"
       @close="handleDialogClose"
     >
       <el-form
@@ -133,6 +124,7 @@
         :model="form"
         :rules="formRules"
         label-width="100px"
+        class="responsive-form"
       >
         <el-form-item label="所属公寓" prop="apartment_id">
           <el-select
@@ -166,7 +158,7 @@
           />
         </el-form-item>
         <el-form-item label="设备类型" prop="device_type">
-          <el-select v-model="form.device_type" placeholder="请选择设备类型" clearable>
+          <el-select v-model="form.device_type" placeholder="请选择设备类型" clearable style="width: 100%">
             <el-option label="RouterOS" value="RouterOS" />
             <el-option label="Cisco" value="Cisco" />
             <el-option label="H3C" value="H3C" />
@@ -182,7 +174,7 @@
           <el-input v-model="form.secret" placeholder="不修改请留空" />
         </el-form-item>
         <el-form-item label="检测间隔" prop="check_interval">
-          <el-input-number v-model="form.check_interval" :min="1" :max="60" placeholder="检测间隔（分钟）" />
+          <el-input-number v-model="form.check_interval" :min="1" :max="60" placeholder="检测间隔（分钟）" style="width: 100%" />
         </el-form-item>
         <el-form-item label="会话超时" prop="session_timeout">
           <el-input-number
@@ -190,6 +182,7 @@
             :min="0"
             :max="86400"
             placeholder="会话超时时间（秒）"
+            style="width: 100%"
           />
           <span style="margin-left: 10px; color: #999; font-size: 12px;">设置为0则不发送</span>
         </el-form-item>
@@ -199,6 +192,7 @@
             :min="0"
             :max="86400"
             placeholder="计费更新间隔（秒）"
+            style="width: 100%"
           />
           <span style="margin-left: 10px; color: #999; font-size: 12px;">设置为0则不发送</span>
         </el-form-item>
@@ -207,8 +201,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
+        <el-button @click="dialogVisible = false" size="small">取消</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleSubmit" size="small">
           确定
         </el-button>
       </template>
@@ -217,7 +211,8 @@
     <el-dialog
       v-model="detailDialogVisible"
       title="设备详情"
-      width="700px"
+      width="95%"
+      class="responsive-dialog"
     >
       <el-descriptions :column="2" border v-if="currentRow">
         <el-descriptions-item label="设备名称">{{ currentRow.name }}</el-descriptions-item>
@@ -259,22 +254,6 @@
           {{ formatDateTime(currentRow.updated_at) }}
         </el-descriptions-item>
       </el-descriptions>
-
-      <el-divider>状态历史</el-divider>
-
-      <el-timeline v-if="statusHistory.length > 0">
-        <el-timeline-item
-          v-for="(item, index) in statusHistory"
-          :key="index"
-          :timestamp="formatDateTime(item.created_at)"
-          :type="item.status === 'online' ? 'success' : 'danger'"
-        >
-          <p>状态: {{ item.status === 'online' ? '在线' : '离线' }}</p>
-          <p v-if="item.response_time">响应时间: {{ item.response_time }}ms</p>
-          <p v-if="item.error_message" class="error-text">错误: {{ item.error_message }}</p>
-        </el-timeline-item>
-      </el-timeline>
-      <div v-else class="empty-text">暂无状态历史</div>
     </el-dialog>
   </div>
 </template>
@@ -292,6 +271,7 @@ import {
   testNasDevice
 } from './api'
 import { getApartments } from '@/modules/apartment/api'
+import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -300,7 +280,6 @@ const detailDialogVisible = ref(false)
 const submitLoading = ref(false)
 const formRef = ref()
 const currentRow = ref(null)
-const statusHistory = ref([])
 const apartments = ref([])
 
 const isEdit = computed(() => !!currentRow.value?.id)
@@ -358,7 +337,7 @@ const loadData = async () => {
       page: pagination.page,
       page_size: pagination.pageSize
     }
-    
+
     if (searchForm.keyword) {
       params.keyword = searchForm.keyword
     }
@@ -368,7 +347,7 @@ const loadData = async () => {
     if (searchForm.apartment_id) {
       params.apartment_id = searchForm.apartment_id
     }
-    
+
     const res = await getNasDevices(params)
     tableData.value = res.data || []
     pagination.total = res.total || 0
@@ -431,7 +410,6 @@ const handleDetail = async (row) => {
   try {
     const res = await getNasDevice(row.id)
     currentRow.value = res.data
-    statusHistory.value = res.data.status_history || []
     detailDialogVisible.value = true
   } catch (error) {
     console.error('加载详情失败:', error)
@@ -565,5 +543,46 @@ onMounted(() => {
 .error-text {
   color: #f56c6c;
   font-size: 12px;
+}
+
+/* 手机端样式优化 */
+@media (max-width: 767px) {
+  .page-container {
+    padding: 10px;
+  }
+
+  .search-form {
+    padding: 12px;
+    margin-bottom: 15px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .page-title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .el-button--small {
+    padding: 6px 12px;
+  }
+
+  .el-button .el-icon {
+    margin-right: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .el-button .el-icon {
+    margin-right: 0;
+  }
+
+  .el-button span {
+    display: none;
+  }
 }
 </style>

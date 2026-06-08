@@ -1,5 +1,7 @@
 -- =====================================================
 -- RADIUS 网络计费管理系统 - 数据库初始化脚本
+-- 创建时间: 2024-01-01
+-- 最后更新: 基于实际数据库结构
 -- =====================================================
 
 -- 创建数据库
@@ -32,6 +34,7 @@ CREATE TABLE IF NOT EXISTS `operators` (
     `username` VARCHAR(50) NOT NULL COMMENT '用户名',
     `password_hash` VARCHAR(255) NOT NULL COMMENT '密码哈希',
     `name` VARCHAR(50) COMMENT '姓名',
+    `phone` VARCHAR(20) COMMENT '手机号',
     `role` VARCHAR(20) DEFAULT 'operator' COMMENT '角色：admin-系统管理员，operator-普通操作员',
     `status` VARCHAR(20) DEFAULT 'active' COMMENT '状态：active-正常，inactive-禁用',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -63,14 +66,15 @@ CREATE TABLE IF NOT EXISTS `nas_devices` (
     `name` VARCHAR(100) NOT NULL COMMENT '设备名称',
     `ip_address` VARCHAR(50) NOT NULL COMMENT 'IP地址',
     `mac_address` VARCHAR(17) COMMENT 'MAC地址',
-    `nas_identifier` VARCHAR(100) COMMENT 'NAS标识符',
-    `device_type` VARCHAR(50) COMMENT '设备类型（如：RouterOS, MikroTik, Cisco, H3C等）',
+    `nas_identifier` VARCHAR(100) COMMENT 'NAS标识符（RADIUS Attribute 32）',
+    `device_type` VARCHAR(50) COMMENT '设备类型（如：RouterOS, Cisco, H3C等）',
     `community` VARCHAR(100) COMMENT 'SNMP团体名',
-    `secret` VARCHAR(255) NOT NULL COMMENT '共享密钥（与NAS设备配置的RADIUS密钥一致）',
+    `secret` VARCHAR(255) NOT NULL COMMENT '共享密钥',
     `check_interval` INT DEFAULT 1 COMMENT '检测间隔（分钟）',
     `session_timeout` INT DEFAULT 15682168 COMMENT '会话超时时间（秒）',
     `acct_interim_interval` INT DEFAULT 60 COMMENT '计费更新间隔（秒）',
     `description` TEXT COMMENT '设备描述',
+    `status` VARCHAR(20) DEFAULT 'offline' COMMENT '设备状态：online-在线，offline-离线',
     `apartment_id` INT COMMENT '所属公寓ID',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -132,7 +136,7 @@ CREATE TABLE IF NOT EXISTS `radius_communication_logs` (
     `server_ip` VARCHAR(50) NOT NULL COMMENT 'RADIUS服务器IP',
     `port` INT NOT NULL COMMENT '端口号',
     `direction` VARCHAR(10) NOT NULL COMMENT '方向：request-请求，response-响应',
-    `packet_type` VARCHAR(50) COMMENT '数据包类型：Access-Request, Access-Accept, Accounting-Request (Start), Accounting-Request (Stop)等',
+    `packet_type` VARCHAR(50) COMMENT '数据包类型',
     `username` VARCHAR(100) COMMENT '用户名',
     `session_id` VARCHAR(100) COMMENT '会话ID',
     `request_code` VARCHAR(20) COMMENT '请求码/响应码',
@@ -155,8 +159,8 @@ CREATE TABLE IF NOT EXISTS `plans` (
     `id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     `name` VARCHAR(100) NOT NULL COMMENT '套餐名称',
     `price` VARCHAR(50) NOT NULL COMMENT '套餐费用',
-    `upload_speed` INT NOT NULL COMMENT '上行速率（M）',
-    `download_speed` INT NOT NULL COMMENT '下行速率（M）',
+    `upload_speed` INT NOT NULL COMMENT '上行速率（KB/s）',
+    `download_speed` INT NOT NULL COMMENT '下行速率（KB/s）',
     `apartment_id` INT COMMENT '关联的公寓ID',
     `status` VARCHAR(20) DEFAULT 'active' COMMENT '状态：active-正常，inactive-禁用',
     `description` TEXT COMMENT '套餐描述',
@@ -223,7 +227,7 @@ CREATE TABLE IF NOT EXISTS `online_users` (
 -- 12. 审计日志表
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `audit_logs` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+    `id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
     `operator_id` INT COMMENT '操作员ID',
     `operator_name` VARCHAR(50) COMMENT '操作员用户名',
     `module` VARCHAR(50) NOT NULL COMMENT '操作模块',

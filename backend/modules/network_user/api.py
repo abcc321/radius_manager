@@ -9,7 +9,7 @@ from io import BytesIO
 import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
-from common import get_db, NetworkUser, Apartment, Plan, hash_password, model_to_dict
+from common import get_db, NetworkUser, Apartment, Plan, hash_password, model_to_dict, get_current_operator, OperatorInfo
 from modules.audit_log.utils import log_audit
 
 router = APIRouter(prefix="/network_users", tags=["网络用户管理"])
@@ -435,7 +435,12 @@ async def get_network_user(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/")
-async def create_network_user(user_data: NetworkUserCreate, request: Request, db: Session = Depends(get_db)):
+async def create_network_user(
+    user_data: NetworkUserCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    operator_info: OperatorInfo = Depends(get_current_operator)
+):
     """创建网络用户"""
     existing_user = db.query(NetworkUser).filter(
         NetworkUser.apartment_id == user_data.apartment_id,
@@ -470,23 +475,14 @@ async def create_network_user(user_data: NetworkUserCreate, request: Request, db
     db.refresh(user)
 
     # 记录审计日志
-    plan_name = None
-    if user_data.plan_id:
-        plan = db.query(Plan).filter(Plan.id == user_data.plan_id).first()
-        if plan:
-            plan_name = plan.name
-
     log_audit(
         db=db,
-        operator_id=getattr(request.state, 'operator_id', None),
-        operator_name=getattr(request.state, 'operator_name', None),
+        operator_id=operator_info.operator_id,
+        operator_name=operator_info.username,
         module="网络用户管理",
         action="CREATE",
-        target_type="NetworkUser",
         target_id=user.id,
-        target_name=user.username,
-        description=f"创建网络用户：{user.username}，姓名：{user.name or '未填写'}，公寓：{apt.name}",
-        new_data=model_to_dict(user),
+        description=f"【新增】网络用户管理 - {operator_info.username}: {user.username}(ID:{user.id}, 姓名:{user.name or '无'})",
         ip_address=request.client.host if request.client else None,
         status="success"
     )
@@ -503,7 +499,8 @@ async def update_network_user(
     user_id: int,
     user_data: NetworkUserUpdate,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    operator_info: OperatorInfo = Depends(get_current_operator)
 ):
     """更新网络用户"""
     user = db.query(NetworkUser).filter(NetworkUser.id == user_id).first()
@@ -511,7 +508,11 @@ async def update_network_user(
         raise HTTPException(status_code=404, detail="用户不存在")
 
     # 记录修改前的数据
-    old_data = model_to_dict(user)
+    old_username = user.username
+    old_name = user.name
+
+    # 记录修改前的状态
+    old_status = user.status
 
     if user_data.apartment_id is not None:
         apt = db.query(Apartment).filter(Apartment.id == user_data.apartment_id).first()
@@ -531,10 +532,17 @@ async def update_network_user(
             if not plan:
                 raise HTTPException(status_code=400, detail="套餐不存在")
         user.plan_id = user_data.plan_id if user_data.plan_id > 0 else None
-    if user_data.activate_date is not None:
+    if user_data.activate_date is not None and user_data.activate_date != "":
         user.activate_date = user_data.activate_date
-    if user_data.expire_date is not None:
+    if user_data.expire_date is not None and user_data.expire_date != "":
         user.expire_date = user_data.expire_date
+
+    # 如果更新了开通日期或到期日期，说明是开通操作，把状态改为 active
+    activate_has_value = user_data.activate_date is not None and user_data.activate_date != ""
+    expire_has_value = user_data.expire_date is not None and user_data.expire_date != ""
+    if activate_has_value or expire_has_value:
+        user.status = "active"
+        print(f"[UPDATE USER] 用户ID: {user_id}, activate_date: {user_data.activate_date}, expire_date: {user_data.expire_date}, 状态从 {old_status} 改为 active")
 
     db.commit()
     db.refresh(user)
@@ -542,16 +550,12 @@ async def update_network_user(
     # 记录审计日志
     log_audit(
         db=db,
-        operator_id=getattr(request.state, 'operator_id', None),
-        operator_name=getattr(request.state, 'operator_name', None),
+        operator_id=operator_info.operator_id,
+        operator_name=operator_info.username,
         module="网络用户管理",
         action="UPDATE",
-        target_type="NetworkUser",
         target_id=user.id,
-        target_name=user.username,
-        description=f"更新网络用户：{user.username}",
-        old_data=old_data,
-        new_data=model_to_dict(user),
+        description=f"【修改】网络用户管理 - {operator_info.username}: {old_username}(ID:{user.id}, 姓名:{old_name or '无'}→{user.name or '无'})",
         ip_address=request.client.host if request.client else None,
         status="success"
     )
@@ -564,14 +568,19 @@ async def update_network_user(
 
 
 @router.post("/{user_id}/deactivate")
-async def deactivate_network_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+async def deactivate_network_user(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    operator_info: OperatorInfo = Depends(get_current_operator)
+):
     """停用网络用户"""
     user = db.query(NetworkUser).filter(NetworkUser.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    # 记录修改前的数据
-    old_data = model_to_dict(user)
+    # 记录停用前的数据
+    user_username = user.username
 
     user.activate_date = None
     user.expire_date = None
@@ -583,16 +592,12 @@ async def deactivate_network_user(user_id: int, request: Request, db: Session = 
     # 记录审计日志
     log_audit(
         db=db,
-        operator_id=getattr(request.state, 'operator_id', None),
-        operator_name=getattr(request.state, 'operator_name', None),
+        operator_id=operator_info.operator_id,
+        operator_name=operator_info.username,
         module="网络用户管理",
         action="UPDATE",
-        target_type="NetworkUser",
         target_id=user.id,
-        target_name=user.username,
-        description=f"停用网络用户：{user.username}",
-        old_data=old_data,
-        new_data=model_to_dict(user),
+        description=f"【停用】网络用户管理 - {operator_info.username}: {user_username}(ID:{user.id})",
         ip_address=request.client.host if request.client else None,
         status="success"
     )
@@ -609,15 +614,16 @@ async def update_network_user_password(
     user_id: int,
     password_data: NetworkUserPasswordUpdate,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    operator_info: OperatorInfo = Depends(get_current_operator)
 ):
     """修改网络用户密码"""
     user = db.query(NetworkUser).filter(NetworkUser.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    # 记录修改前的数据（不包含密码明文）
-    old_data = {"id": user.id, "username": user.username, "status": user.status}
+    # 记录改密前的用户名
+    user_username = user.username
 
     user.password = password_data.password
     db.commit()
@@ -625,16 +631,12 @@ async def update_network_user_password(
     # 记录审计日志
     log_audit(
         db=db,
-        operator_id=getattr(request.state, 'operator_id', None),
-        operator_name=getattr(request.state, 'operator_name', None),
+        operator_id=operator_info.operator_id,
+        operator_name=operator_info.username,
         module="网络用户管理",
         action="UPDATE",
-        target_type="NetworkUser",
         target_id=user.id,
-        target_name=user.username,
-        description=f"修改网络用户密码：{user.username}",
-        old_data=old_data,
-        new_data={"id": user.id, "username": user.username, "status": user.status},
+        description=f"【改密】网络用户管理 - {operator_info.username}: {user_username}(ID:{user.id})",
         ip_address=request.client.host if request.client else None,
         status="success"
     )
@@ -646,32 +648,39 @@ async def update_network_user_password(
 
 
 @router.post("/{user_id}/activate")
-async def activate_network_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+async def activate_network_user(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    operator_info: OperatorInfo = Depends(get_current_operator)
+):
     """开通网络用户"""
     user = db.query(NetworkUser).filter(NetworkUser.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    # 记录修改前的数据
-    old_data = model_to_dict(user)
+    # 记录开通前的用户名
+    user_username = user.username
 
     user.status = "active"
     user.activate_date = datetime.now().strftime("%Y-%m-%d")
+    if user.expire_date:
+        expire_date_obj = datetime.strptime(user.expire_date, "%Y-%m-%d")
+        if expire_date_obj <= datetime.now():
+            # 如果到期日期已过期，则自动设置为30天后
+            from datetime import timedelta
+            user.expire_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
     db.commit()
 
     # 记录审计日志
     log_audit(
         db=db,
-        operator_id=getattr(request.state, 'operator_id', None),
-        operator_name=getattr(request.state, 'operator_name', None),
+        operator_id=operator_info.operator_id,
+        operator_name=operator_info.username,
         module="网络用户管理",
         action="UPDATE",
-        target_type="NetworkUser",
         target_id=user.id,
-        target_name=user.username,
-        description=f"开通网络用户：{user.username}",
-        old_data=old_data,
-        new_data=model_to_dict(user),
+        description=f"【开通】网络用户管理 - {operator_info.username}: {user_username}(ID:{user.id})",
         ip_address=request.client.host if request.client else None,
         status="success"
     )
@@ -687,15 +696,21 @@ async def activate_network_user(user_id: int, request: Request, db: Session = De
 
 
 @router.delete("/{user_id}")
-async def delete_network_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+async def delete_network_user(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    operator_info: OperatorInfo = Depends(get_current_operator)
+):
     """删除网络用户"""
     user = db.query(NetworkUser).filter(NetworkUser.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
     # 记录删除前的数据
-    old_data = model_to_dict(user)
-    username = user.username
+    user_username = user.username
+    user_name = user.name
+    user_id_record = user.id
 
     db.delete(user)
     db.commit()
@@ -703,15 +718,12 @@ async def delete_network_user(user_id: int, request: Request, db: Session = Depe
     # 记录审计日志
     log_audit(
         db=db,
-        operator_id=getattr(request.state, 'operator_id', None),
-        operator_name=getattr(request.state, 'operator_name', None),
+        operator_id=operator_info.operator_id,
+        operator_name=operator_info.username,
         module="网络用户管理",
         action="DELETE",
-        target_type="NetworkUser",
-        target_id=user_id,
-        target_name=username,
-        description=f"删除网络用户：{username}",
-        old_data=old_data,
+        target_id=user_id_record,
+        description=f"【删除】网络用户管理 - {operator_info.username}: {user_username}(ID:{user_id_record}, 姓名:{user_name or '无'})",
         ip_address=request.client.host if request.client else None,
         status="success"
     )

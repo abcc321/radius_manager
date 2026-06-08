@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from pydantic import BaseModel
 from typing import Optional, List
-from common import get_db, Plan, Apartment, model_to_dict
+from common import get_db, Plan, Apartment, model_to_dict, get_current_operator, OperatorInfo
 from modules.audit_log.utils import log_audit
 
 router = APIRouter(prefix="/plans", tags=["套餐管理"])
@@ -11,7 +11,13 @@ router = APIRouter(prefix="/plans", tags=["套餐管理"])
 
 def check_admin_permission(request: Request):
     """检查是否为管理员"""
+    # 从多个来源获取角色信息
     role = getattr(request.state, 'role', None)
+    if not role:
+        role = request.query_params.get("role")
+    if not role:
+        role = request.headers.get("X-Operator-Role")
+
     if role != 'admin':
         raise HTTPException(
             status_code=403,
@@ -157,7 +163,13 @@ async def get_plan(plan_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/")
-async def create_plan(plan_data: PlanCreate, request: Request, db: Session = Depends(get_db), _: None = Depends(check_admin_permission)):
+async def create_plan(
+    plan_data: PlanCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    operator_info: OperatorInfo = Depends(get_current_operator),
+    _: None = Depends(check_admin_permission)
+):
     """创建套餐"""
     if plan_data.apartment_id:
         apt = db.query(Apartment).filter(Apartment.id == plan_data.apartment_id).first()
@@ -178,23 +190,14 @@ async def create_plan(plan_data: PlanCreate, request: Request, db: Session = Dep
     db.refresh(plan)
 
     # 记录审计日志
-    apartment_name = None
-    if plan_data.apartment_id:
-        apt = db.query(Apartment).filter(Apartment.id == plan_data.apartment_id).first()
-        if apt:
-            apartment_name = apt.name
-
     log_audit(
         db=db,
-        operator_id=getattr(request.state, 'operator_id', None),
-        operator_name=getattr(request.state, 'operator_name', None),
+        operator_id=operator_info.operator_id,
+        operator_name=operator_info.username,
         module="套餐管理",
         action="CREATE",
-        target_type="Plan",
         target_id=plan.id,
-        target_name=plan.name,
-        description=f"创建套餐：{plan.name}，价格：{plan.price}元/月，公寓：{apartment_name or '通用'}",
-        new_data=model_to_dict(plan),
+        description=f"【新增】套餐管理 - {operator_info.username}: {plan.name}(ID:{plan.id}, 价格:{plan.price}元)",
         ip_address=request.client.host if request.client else None,
         status="success"
     )
@@ -212,6 +215,7 @@ async def update_plan(
     plan_data: PlanUpdate,
     request: Request,
     db: Session = Depends(get_db),
+    operator_info: OperatorInfo = Depends(get_current_operator),
     _: None = Depends(check_admin_permission)
 ):
     """更新套餐"""
@@ -220,7 +224,8 @@ async def update_plan(
         raise HTTPException(status_code=404, detail="套餐不存在")
 
     # 记录修改前的数据
-    old_data = model_to_dict(plan)
+    old_name = plan.name
+    old_price = plan.price
 
     if plan_data.name is not None:
         plan.name = plan_data.name
@@ -247,16 +252,12 @@ async def update_plan(
     # 记录审计日志
     log_audit(
         db=db,
-        operator_id=getattr(request.state, 'operator_id', None),
-        operator_name=getattr(request.state, 'operator_name', None),
+        operator_id=operator_info.operator_id,
+        operator_name=operator_info.username,
         module="套餐管理",
         action="UPDATE",
-        target_type="Plan",
         target_id=plan.id,
-        target_name=plan.name,
-        description=f"更新套餐：{plan.name}",
-        old_data=old_data,
-        new_data=model_to_dict(plan),
+        description=f"【修改】套餐管理 - {operator_info.username}: {plan.name}(ID:{plan.id}, 价格:{old_price}→{plan.price})",
         ip_address=request.client.host if request.client else None,
         status="success"
     )
@@ -269,15 +270,21 @@ async def update_plan(
 
 
 @router.delete("/{plan_id}")
-async def delete_plan(plan_id: int, request: Request, db: Session = Depends(get_db), _: None = Depends(check_admin_permission)):
+async def delete_plan(
+    plan_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    operator_info: OperatorInfo = Depends(get_current_operator),
+    _: None = Depends(check_admin_permission)
+):
     """删除套餐"""
     plan = db.query(Plan).filter(Plan.id == plan_id).first()
     if not plan:
         raise HTTPException(status_code=404, detail="套餐不存在")
 
     # 记录删除前的数据
-    old_data = model_to_dict(plan)
     plan_name = plan.name
+    plan_id_record = plan.id
 
     db.delete(plan)
     db.commit()
@@ -285,15 +292,12 @@ async def delete_plan(plan_id: int, request: Request, db: Session = Depends(get_
     # 记录审计日志
     log_audit(
         db=db,
-        operator_id=getattr(request.state, 'operator_id', None),
-        operator_name=getattr(request.state, 'operator_name', None),
+        operator_id=operator_info.operator_id,
+        operator_name=operator_info.username,
         module="套餐管理",
         action="DELETE",
-        target_type="Plan",
-        target_id=plan_id,
-        target_name=plan_name,
-        description=f"删除套餐：{plan_name}",
-        old_data=old_data,
+        target_id=plan_id_record,
+        description=f"【删除】套餐管理 - {operator_info.username}: {plan_name}(ID:{plan_id_record})",
         ip_address=request.client.host if request.client else None,
         status="success"
     )

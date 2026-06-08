@@ -11,9 +11,9 @@
         </div>
       </template>
 
-      <div class="search-form">
+      <div class="search-form responsive-search-form">
         <el-form :inline="true" :model="searchForm">
-          <el-form-item label="关键词">
+          <el-form-item label="关键词" class="hide-on-mobile">
             <el-input
               v-model="searchForm.keyword"
               placeholder="用户名/姓名"
@@ -21,14 +21,14 @@
               @keyup.enter="handleSearch"
             />
           </el-form-item>
-          <el-form-item label="角色">
-            <el-select v-model="searchForm.role" placeholder="选择角色" clearable>
+          <el-form-item label="角色" class="hide-on-mobile">
+            <el-select v-model="searchForm.role" placeholder="角色" clearable>
               <el-option label="管理员" value="admin" />
               <el-option label="操作员" value="operator" />
             </el-select>
           </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="searchForm.status" placeholder="选择状态" clearable>
+          <el-form-item label="状态" class="hide-on-mobile">
+            <el-select v-model="searchForm.status" placeholder="状态" clearable>
               <el-option label="正常" value="active" />
               <el-option label="禁用" value="inactive" />
             </el-select>
@@ -46,52 +46,45 @@
         </el-form>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="name" label="姓名" width="120" />
-        <el-table-column prop="role" label="角色" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.role === 'admin' ? 'danger' : 'primary'" size="small">
-              {{ row.role === "admin" ? "管理员" : "操作员" }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'danger'" size="small">
-              {{ row.status === "active" ? "正常" : "禁用" }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="公寓权限" min-width="150">
-          <template #default="{ row }">
-            <span v-if="row.apartment_ids && row.apartment_ids.length > 0">
-              已分配 {{ row.apartment_ids.length }} 个公寓
-            </span>
-            <span v-else style="color: #999;">未分配</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="180">
-          <template #default="{ row }">
-            {{ formatDate(row.created_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="success" @click="handleAssignApartments(row)">分配公寓</el-button>
-            <el-button link type="warning" @click="handleChangePassword(row)">改密</el-button>
-            <el-button
-              link
-              type="danger"
-              @click="handleDelete(row)"
-              :disabled="row.username === 'admin'"
-            >
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-responsive-wrapper">
+        <el-table :data="tableData" v-loading="loading" stripe>
+          <el-table-column prop="username" label="用户名" width="100" />
+          <el-table-column prop="name" label="姓名" width="100" />
+          <el-table-column prop="role" label="角色" width="80">
+            <template #default="{ row }">
+              <el-tag :type="row.role === 'admin' ? 'danger' : 'primary'" size="small">
+                {{ row.role === "admin" ? "管理员" : "操作员" }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="70">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'active' ? 'success' : 'danger'" size="small">
+                {{ row.status === "active" ? "正常" : "禁用" }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="公寓" min-width="120" class-name="hide-on-tablet">
+            <template #default="{ row }">
+              <span v-if="row.apartment_ids && row.apartment_ids.length > 0">
+                {{ row.apartment_ids.length }} 个公寓
+              </span>
+              <span v-else style="color: #999;">未分配</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="创建时间" width="140" class-name="hide-on-mobile">
+            <template #default="{ row }">
+              {{ formatDate(row.created_at) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button link type="success" size="small" @click="handleAssignApartments(row)">分配</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <div class="pagination-container">
         <el-pagination

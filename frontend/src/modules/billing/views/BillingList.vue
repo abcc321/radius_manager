@@ -7,8 +7,8 @@
         </div>
       </template>
 
-      <el-form :inline="true" class="search-form">
-        <el-form-item label="账单月份">
+      <el-form :inline="true" class="search-form responsive-search-form">
+        <el-form-item label="账单月份" class="hide-on-mobile">
           <el-date-picker
             v-model="searchForm.billMonth"
             type="month"
@@ -18,8 +18,8 @@
             style="width: 150px"
           />
         </el-form-item>
-        <el-form-item label="公寓">
-          <el-select v-model="searchForm.apartment_id" placeholder="全部公寓" clearable style="width: 200px">
+        <el-form-item label="公寓" class="hide-on-mobile">
+          <el-select v-model="searchForm.apartment_id" placeholder="全部公寓" clearable style="width: 180px">
             <el-option
               v-for="apt in apartments"
               :key="apt.id"
@@ -37,54 +37,56 @@
             <el-icon><Refresh /></el-icon>
             重置
           </el-button>
-          <el-button type="success" @click="exportExcel" :loading="exporting">
+          <el-button type="success" @click="exportExcel" :loading="exporting" class="hide-on-mobile">
             <el-icon><Download /></el-icon>
-            导出Excel
+            导出
           </el-button>
         </el-form-item>
       </el-form>
 
       <div v-if="summary" class="summary-info">
         <el-row :gutter="20">
-          <el-col :span="6">
-            <el-statistic title="公寓数量" :value="summary.total_apartments" />
+          <el-col :xs="8" :sm="6">
+            <el-statistic title="公寓数" :value="summary.total_apartments" />
           </el-col>
-          <el-col :span="6">
-            <el-statistic title="总账号数" :value="summary.total_accounts" />
+          <el-col :xs="8" :sm="6">
+            <el-statistic title="账号数" :value="summary.total_accounts" />
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="8" :sm="6">
             <el-statistic title="总费用" :value="summary.total_amount" prefix="¥" :precision="2" />
           </el-col>
         </el-row>
       </div>
 
-      <el-table :data="billSummary" v-loading="loading" stripe style="margin-top: 20px">
-        <el-table-column prop="apartment_code" label="公寓编号" width="120" />
-        <el-table-column prop="apartment_name" label="公寓名称" min-width="150" />
-        <el-table-column prop="total_accounts" label="总账号数" width="100" align="center" />
-        <el-table-column prop="active_accounts" label="开通账号" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag type="success" size="small">{{ row.active_accounts }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="inactive_accounts" label="未开通账号" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag type="info" size="small">{{ row.inactive_accounts }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="total_amount" label="总费用" width="120" align="right">
-          <template #default="{ row }">
-            <span style="color: #409eff; font-weight: bold;">¥{{ row.total_amount }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right" align="center">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="showDetails(row)">
-              查看明细
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-responsive-wrapper">
+        <el-table :data="billSummary" v-loading="loading" stripe style="margin-top: 20px">
+          <el-table-column prop="apartment_code" label="编号" width="100" />
+          <el-table-column prop="apartment_name" label="公寓名称" min-width="120" />
+          <el-table-column prop="total_accounts" label="账号" width="80" align="center" />
+          <el-table-column prop="active_accounts" label="开通" width="70" align="center">
+            <template #default="{ row }">
+              <el-tag type="success" size="small">{{ row.active_accounts }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="inactive_accounts" label="未开通" width="70" align="center" class-name="hide-on-mobile">
+            <template #default="{ row }">
+              <el-tag type="info" size="small">{{ row.inactive_accounts }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="total_amount" label="费用" width="100" align="right">
+            <template #default="{ row }">
+              <span style="color: #409eff; font-weight: bold;">¥{{ row.total_amount }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="80" fixed="right" align="center">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click="showDetails(row)">
+                明细
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </el-card>
 
     <el-dialog
